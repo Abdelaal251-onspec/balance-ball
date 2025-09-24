@@ -173,9 +173,9 @@ class App {
         }, 500);
     }
     
-    startGame() {
+    async startGame() {
         if (this.game) {
-            this.game.startLevel(this.game.currentLevel);
+            await this.game.startLevel(this.game.currentLevel);
         }
     }
     
@@ -206,11 +206,11 @@ class App {
         if (this.game) {
             this.game.calibrateDevice();
             
-            // Show success message
+            // Show success message after calibration
             setTimeout(() => {
                 alert('Calibration complete! Your device is now calibrated for optimal gameplay.');
                 Utils.showScreen('menu-screen');
-            }, 1000);
+            }, 2500);
         }
     }
     

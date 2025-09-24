@@ -114,8 +114,77 @@ class Game {
         Utils.saveData('currentLevel', this.currentLevel);
     }
     
+    showLevelLoading(levelNumber) {
+        // Create and show loading overlay
+        const gameScreen = document.getElementById('game-screen');
+        let loadingOverlay = document.getElementById('level-loading-overlay');
+        
+        if (!loadingOverlay) {
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.id = 'level-loading-overlay';
+            loadingOverlay.className = 'loading-overlay';
+            loadingOverlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3 id="loading-title">Generating Level ${levelNumber}</h3>
+                    <p id="loading-subtitle">Creating obstacles and positioning hole...</p>
+                    <div class="loading-progress">
+                        <div class="loading-bar"></div>
+                    </div>
+                </div>
+            `;
+            gameScreen.appendChild(loadingOverlay);
+        } else {
+            document.getElementById('loading-title').textContent = `Generating Level ${levelNumber}`;
+            document.getElementById('loading-subtitle').textContent = 'Creating obstacles and positioning hole...';
+        }
+        
+        loadingOverlay.style.display = 'flex';
+        
+        // Animate loading bar
+        const loadingBar = loadingOverlay.querySelector('.loading-bar');
+        loadingBar.style.width = '0%';
+        setTimeout(() => {
+            loadingBar.style.width = '100%';
+        }, 100);
+        
+        // Auto-hide after level loads
+        setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+        }, 500 + Math.min(levelNumber * 100, 1000));
+    }
+
+    showCalibrationLoading() {
+        const calibrationScreen = document.getElementById('calibration-screen');
+        let loadingOverlay = document.getElementById('calibration-loading-overlay');
+        
+        if (!loadingOverlay) {
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.id = 'calibration-loading-overlay';
+            loadingOverlay.className = 'loading-overlay';
+            loadingOverlay.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3>Calibrating Device</h3>
+                    <p>Reading device orientation...</p>
+                </div>
+            `;
+            calibrationScreen.appendChild(loadingOverlay);
+        }
+        
+        loadingOverlay.style.display = 'flex';
+        
+        // Hide after calibration
+        setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+        }, 2000);
+    }
+
     calibrateDevice() {
         if (window.DeviceOrientationEvent) {
+            // Show calibration loading
+            this.showCalibrationLoading();
+            
             // Get current orientation as calibration baseline
             const handleCalibration = (event) => {
                 this.calibrationX = event.gamma || 0;
@@ -144,7 +213,13 @@ class Game {
         }
     }
     
-    startLevel(levelNumber) {
+    async startLevel(levelNumber) {
+        // Show loading for level generation
+        this.showLevelLoading(levelNumber);
+        
+        // Simulate level generation time (for complex levels)
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.min(levelNumber * 100, 1000)));
+        
         this.currentLevel = levelNumber;
         const levelData = this.levels.getLevelData(levelNumber);
         
@@ -198,14 +273,14 @@ class Game {
         }
     }
     
-    restartLevel() {
-        this.startLevel(this.currentLevel);
+    async restartLevel() {
+        await this.startLevel(this.currentLevel);
     }
     
-    nextLevel() {
+    async nextLevel() {
         this.currentLevel++;
         this.saveGameData();
-        this.startLevel(this.currentLevel);
+        await this.startLevel(this.currentLevel);
     }
     
     winLevel() {
