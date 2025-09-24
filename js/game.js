@@ -10,7 +10,8 @@ class Game {
         // Game state
         this.gameState = 'menu'; // menu, playing, paused, win, gameover
         this.currentLevel = 1;
-        this.timeRemaining = 30;
+        this.gameTime = 0; // Game timer always starts from 0 and counts up
+        this.timeLimit = 30; // Time limit for the level
         this.gameStartTime = 0;
         
         // Device orientation
@@ -228,11 +229,12 @@ class Game {
         
         this.hole = scaledLevel.hole;
         this.obstacles = scaledLevel.obstacles;
-        this.timeRemaining = scaledLevel.timeLimit;
+        this.gameTime = 0; // Always start from zero
+        this.timeLimit = scaledLevel.timeLimit; // Set the time limit for this level
         
         // Update UI
         document.getElementById('game-level').textContent = levelNumber;
-        document.getElementById('game-timer').textContent = this.timeRemaining;
+        document.getElementById('game-timer').textContent = this.timeLimit;
         
         // Set game state
         this.gameState = 'playing';
@@ -249,16 +251,33 @@ class Game {
         if (tiltInfo) {
             tiltInfo.style.display = 'block';
             tiltInfo.style.opacity = '1';
+            tiltInfo.style.cursor = 'pointer';
             
-            // Hide after 3 seconds with fade animation
-            setTimeout(() => {
-                tiltInfo.style.transition = 'opacity 1s ease-out';
+            // Hide when clicked
+            const hideMessage = () => {
+                tiltInfo.style.transition = 'opacity 0.5s ease-out';
                 tiltInfo.style.opacity = '0';
                 
                 // Completely hide after fade
                 setTimeout(() => {
                     tiltInfo.style.display = 'none';
-                }, 1000);
+                }, 500);
+                
+                // Remove event listener after hiding
+                tiltInfo.removeEventListener('click', hideMessage);
+                tiltInfo.removeEventListener('touchend', hideMessage);
+            };
+            
+            // Add click/touch event listeners
+            tiltInfo.addEventListener('click', hideMessage);
+            tiltInfo.addEventListener('touchend', hideMessage);
+            
+            // Also hide after 3 seconds with fade animation (auto-hide)
+            setTimeout(() => {
+                // Only hide if still visible (not manually hidden)
+                if (tiltInfo.style.opacity !== '0') {
+                    hideMessage();
+                }
             }, 3000);
         }
     }
@@ -288,7 +307,7 @@ class Game {
     }
     
     winLevel() {
-        const completionTime = 30 - this.timeRemaining;
+        const completionTime = this.gameTime; // Use actual elapsed time
         
         // Save best time
         const savedBestTime = Utils.loadData('bestTime', null);
@@ -342,15 +361,18 @@ class Game {
     
     updateTimer(deltaTime) {
         if (this.gameState === 'playing') {
-            this.timeRemaining -= deltaTime / 1000;
+            // Game time always counts up from 0, never goes negative
+            this.gameTime = Math.max(0, this.gameTime + deltaTime / 1000);
             
-            if (this.timeRemaining <= 0) {
-                this.timeRemaining = 0;
+            // Check if time limit exceeded
+            if (this.gameTime >= this.timeLimit) {
+                this.gameTime = this.timeLimit; // Prevent exceeding time limit
                 this.gameOver();
             }
             
-            // Update UI
-            document.getElementById('game-timer').textContent = Math.ceil(this.timeRemaining);
+            // Update UI - show remaining time (time limit - current time)
+            const remainingTime = Math.max(0, this.timeLimit - this.gameTime);
+            document.getElementById('game-timer').textContent = Math.ceil(remainingTime);
         }
     }
     
