@@ -66,12 +66,14 @@ class Game {
         if (window.DeviceOrientationEvent) {
             window.addEventListener('deviceorientation', (event) => {
                 // Get raw orientation values
-                const beta = event.beta || 0;   // X-axis tilt (-180 to 180)
-                const gamma = event.gamma || 0; // Y-axis tilt (-90 to 90)
+                const beta = event.beta || 0;   // Front-to-back tilt (-180 to 180)
+                const gamma = event.gamma || 0; // Left-to-right tilt (-90 to 90)
                 
-                // Apply calibration offset
-                this.tiltX = (gamma - this.calibrationX) / 90;
-                this.tiltY = (beta - this.calibrationY) / 90;
+                // Apply calibration offset and map to gravity directions
+                // Gamma: positive = tilt right, negative = tilt left
+                // Beta: positive = tilt forward/down, negative = tilt backward/up
+                this.tiltX = (gamma - this.calibrationX) / 45; // More sensitive
+                this.tiltY = (beta - this.calibrationY) / 45;  // More sensitive
                 
                 // Clamp values
                 this.tiltX = Utils.clamp(this.tiltX, -1, 1);
@@ -247,9 +249,11 @@ class Game {
     checkWinCondition() {
         if (this.ball && this.hole) {
             const distance = Utils.distance(this.ball.x, this.ball.y, this.hole.x, this.hole.y);
-            const inHole = distance < (this.hole.radius - this.ball.radius / 2);
+            // Ball is completely inside the hole when distance + ball radius < hole radius
+            const completelyInHole = distance + this.ball.radius < this.hole.radius;
             
-            if (inHole && this.physics.isBallStopped(this.ball, 0.5)) {
+            // Win when ball is completely in hole and relatively still
+            if (completelyInHole && this.physics.isBallStopped(this.ball, 1.0)) {
                 this.winLevel();
                 return true;
             }
@@ -309,13 +313,33 @@ class Game {
         if (this.gameState === 'playing' || this.gameState === 'paused') {
             // Draw hole
             if (this.hole) {
-                this.ctx.fillStyle = '#2c3e50';
+                // Check if ball is near or in hole for visual feedback
+                let holeColor = '#2c3e50';
+                let holeBorderColor = '#1a252f';
+                
+                if (this.ball) {
+                    const distance = Utils.distance(this.ball.x, this.ball.y, this.hole.x, this.hole.y);
+                    const completelyInHole = distance + this.ball.radius < this.hole.radius;
+                    const nearHole = distance < this.hole.radius + this.ball.radius * 2;
+                    
+                    if (completelyInHole) {
+                        // Ball is in hole - green indicator
+                        holeColor = '#27ae60';
+                        holeBorderColor = '#229954';
+                    } else if (nearHole) {
+                        // Ball is near hole - yellow indicator
+                        holeColor = '#f39c12';
+                        holeBorderColor = '#e67e22';
+                    }
+                }
+                
+                this.ctx.fillStyle = holeColor;
                 this.ctx.beginPath();
                 this.ctx.arc(this.hole.x, this.hole.y, this.hole.radius, 0, Math.PI * 2);
                 this.ctx.fill();
                 
                 // Hole border
-                this.ctx.strokeStyle = '#1a252f';
+                this.ctx.strokeStyle = holeBorderColor;
                 this.ctx.lineWidth = 3;
                 this.ctx.stroke();
             }

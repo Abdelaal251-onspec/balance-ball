@@ -12,9 +12,11 @@ class Physics {
     applyGravity(ball, tiltX, tiltY) {
         const gravityStrength = this.gravity;
         
-        // Convert tilt to acceleration (invert Y for intuitive control)
+        // Convert tilt to acceleration - simulate real gravity
+        // When device tilts right (positive tiltX), ball should roll right
+        // When device tilts forward/down (positive tiltY), ball should roll down
         ball.acceleration.x = tiltX * gravityStrength;
-        ball.acceleration.y = -tiltY * gravityStrength;
+        ball.acceleration.y = tiltY * gravityStrength;
         
         // Apply acceleration to velocity
         ball.velocity.x += ball.acceleration.x;
