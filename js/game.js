@@ -115,43 +115,25 @@ class Game {
     }
     
     showLevelLoading(levelNumber) {
-        // Create and show loading overlay
-        const gameScreen = document.getElementById('game-screen');
-        let loadingOverlay = document.getElementById('level-loading-overlay');
+        // Get difficulty info for display
+        const difficultyInfo = this.levels.getLevelDifficultyInfo(levelNumber);
         
-        if (!loadingOverlay) {
-            loadingOverlay = document.createElement('div');
-            loadingOverlay.id = 'level-loading-overlay';
-            loadingOverlay.className = 'loading-overlay';
-            loadingOverlay.innerHTML = `
-                <div class="loading-content">
-                    <div class="loading-spinner"></div>
-                    <h3 id="loading-title">Generating Level ${levelNumber}</h3>
-                    <p id="loading-subtitle">Creating obstacles and positioning hole...</p>
-                    <div class="loading-progress">
-                        <div class="loading-bar"></div>
-                    </div>
-                </div>
-            `;
-            gameScreen.appendChild(loadingOverlay);
-        } else {
-            document.getElementById('loading-title').textContent = `Generating Level ${levelNumber}`;
-            document.getElementById('loading-subtitle').textContent = 'Creating obstacles and positioning hole...';
+        // Use the existing loading overlay from HTML
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const difficultyName = document.getElementById('difficulty-name');
+        
+        if (loadingOverlay && difficultyName) {
+            difficultyName.textContent = difficultyInfo.name;
+            loadingOverlay.style.display = 'flex';
         }
         
-        loadingOverlay.style.display = 'flex';
-        
-        // Animate loading bar
-        const loadingBar = loadingOverlay.querySelector('.loading-bar');
-        loadingBar.style.width = '0%';
-        setTimeout(() => {
-            loadingBar.style.width = '100%';
-        }, 100);
-        
         // Auto-hide after level loads
+        const loadingTime = 1000; // 1 second loading display
         setTimeout(() => {
-            loadingOverlay.style.display = 'none';
-        }, 500 + Math.min(levelNumber * 100, 1000));
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+        }, loadingTime);
     }
 
     showCalibrationLoading() {
@@ -257,6 +239,28 @@ class Game {
         this.gameStartTime = Date.now();
         
         Utils.showScreen('game-screen');
+        
+        // Show tilt message initially, then hide after 3 seconds
+        this.showTiltMessage();
+    }
+    
+    showTiltMessage() {
+        const tiltInfo = document.querySelector('.tilt-info');
+        if (tiltInfo) {
+            tiltInfo.style.display = 'block';
+            tiltInfo.style.opacity = '1';
+            
+            // Hide after 3 seconds with fade animation
+            setTimeout(() => {
+                tiltInfo.style.transition = 'opacity 1s ease-out';
+                tiltInfo.style.opacity = '0';
+                
+                // Completely hide after fade
+                setTimeout(() => {
+                    tiltInfo.style.display = 'none';
+                }, 1000);
+            }, 3000);
+        }
     }
     
     pauseGame() {
