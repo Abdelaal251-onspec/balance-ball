@@ -311,40 +311,7 @@ class Game {
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
         
         if (this.gameState === 'playing' || this.gameState === 'paused') {
-            // Draw hole
-            if (this.hole) {
-                // Check if ball is near or in hole for visual feedback
-                let holeColor = '#2c3e50';
-                let holeBorderColor = '#1a252f';
-                
-                if (this.ball) {
-                    const distance = Utils.distance(this.ball.x, this.ball.y, this.hole.x, this.hole.y);
-                    const completelyInHole = distance + this.ball.radius < this.hole.radius;
-                    const nearHole = distance < this.hole.radius + this.ball.radius * 2;
-                    
-                    if (completelyInHole) {
-                        // Ball is in hole - green indicator
-                        holeColor = '#27ae60';
-                        holeBorderColor = '#229954';
-                    } else if (nearHole) {
-                        // Ball is near hole - yellow indicator
-                        holeColor = '#f39c12';
-                        holeBorderColor = '#e67e22';
-                    }
-                }
-                
-                this.ctx.fillStyle = holeColor;
-                this.ctx.beginPath();
-                this.ctx.arc(this.hole.x, this.hole.y, this.hole.radius, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Hole border
-                this.ctx.strokeStyle = holeBorderColor;
-                this.ctx.lineWidth = 3;
-                this.ctx.stroke();
-            }
-            
-            // Draw obstacles
+            // Draw obstacles first (background layer)
             this.obstacles.forEach(obstacle => {
                 this.ctx.fillStyle = '#7f8c8d';
                 
@@ -366,6 +333,55 @@ class Game {
                     this.ctx.stroke();
                 }
             });
+            
+            // Draw hole on top of obstacles (middle layer)
+            if (this.hole) {
+                // Check if ball is near or in hole for visual feedback
+                let holeColor = '#2c3e50';
+                let holeBorderColor = '#1a252f';
+                let glowColor = 'rgba(52, 152, 219, 0.3)';
+                
+                if (this.ball) {
+                    const distance = Utils.distance(this.ball.x, this.ball.y, this.hole.x, this.hole.y);
+                    const completelyInHole = distance + this.ball.radius < this.hole.radius;
+                    const nearHole = distance < this.hole.radius + this.ball.radius * 2;
+                    
+                    if (completelyInHole) {
+                        // Ball is in hole - green indicator
+                        holeColor = '#27ae60';
+                        holeBorderColor = '#229954';
+                        glowColor = 'rgba(39, 174, 96, 0.5)';
+                    } else if (nearHole) {
+                        // Ball is near hole - yellow indicator
+                        holeColor = '#f39c12';
+                        holeBorderColor = '#e67e22';
+                        glowColor = 'rgba(243, 156, 18, 0.5)';
+                    }
+                }
+                
+                // Draw hole glow/shadow for better visibility
+                this.ctx.fillStyle = glowColor;
+                this.ctx.beginPath();
+                this.ctx.arc(this.hole.x, this.hole.y, this.hole.radius + 5, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw main hole
+                this.ctx.fillStyle = holeColor;
+                this.ctx.beginPath();
+                this.ctx.arc(this.hole.x, this.hole.y, this.hole.radius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Hole border (thicker for better visibility)
+                this.ctx.strokeStyle = holeBorderColor;
+                this.ctx.lineWidth = 4;
+                this.ctx.stroke();
+                
+                // Inner shadow for depth effect
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                this.ctx.beginPath();
+                this.ctx.arc(this.hole.x, this.hole.y, this.hole.radius - 3, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
             
             // Draw ball
             if (this.ball) {

@@ -21,7 +21,7 @@ class Levels {
                 level: 2,
                 timeLimit: 30,
                 ballStart: { x: 50, y: 50 },
-                hole: { x: 350, y: 350 },
+                hole: { x: 300, y: 300, radius: 25 },
                 obstacles: [
                     { type: 'rectangle', x: 150, y: 150, width: 20, height: 200 }
                 ]
