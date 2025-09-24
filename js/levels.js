@@ -156,36 +156,37 @@ class Levels {
         const holeRadius = tier.holeSize;
         const objects = []; // Track all objects to avoid overlaps
         
-        // Generate ball start position - vary based on difficulty
+        // Generate ball start position - safe from border, obstacles, and hole
+        const borderWidth = 15; // Match game border width
+        const ballRadius = 20;
+        const safeMargin = borderWidth + ballRadius + 10; // Extra safety margin
+        
         let ballStart;
         if (levelNumber === 1) {
-            // Always start in same corner for first level
-            ballStart = { x: 50, y: 50 };
+            // Always start in same safe corner for first level
+            ballStart = { x: safeMargin + 20, y: safeMargin + 20 };
         } else if (levelNumber <= 5) {
-            // Early levels start in corners
+            // Early levels start in safe corners
             const corners = [
-                { x: 50, y: 50 },
-                { x: this.baseWidth - 50, y: 50 },
-                { x: 50, y: this.baseHeight - 50 }
+                { x: safeMargin + 20, y: safeMargin + 20 },
+                { x: this.baseWidth - safeMargin - 20, y: safeMargin + 20 },
+                { x: safeMargin + 20, y: this.baseHeight - safeMargin - 20 },
+                { x: this.baseWidth - safeMargin - 20, y: this.baseHeight - safeMargin - 20 }
             ];
             ballStart = corners[Math.floor(Math.random() * corners.length)];
         } else {
-            // Advanced levels can start anywhere along edges
-            const edge = Math.floor(Math.random() * 4);
-            switch (edge) {
-                case 0: // Top edge
-                    ballStart = { x: 50 + Math.random() * (this.baseWidth - 100), y: 50 };
-                    break;
-                case 1: // Right edge
-                    ballStart = { x: this.baseWidth - 50, y: 50 + Math.random() * (this.baseHeight - 100) };
-                    break;
-                case 2: // Bottom edge
-                    ballStart = { x: 50 + Math.random() * (this.baseWidth - 100), y: this.baseHeight - 50 };
-                    break;
-                case 3: // Left edge
-                    ballStart = { x: 50, y: 50 + Math.random() * (this.baseHeight - 100) };
-                    break;
-            }
+            // Advanced levels can start anywhere in safe area
+            const safeArea = {
+                minX: safeMargin + 20,
+                maxX: this.baseWidth - safeMargin - 20,
+                minY: safeMargin + 20,
+                maxY: this.baseHeight - safeMargin - 20
+            };
+            
+            ballStart = {
+                x: safeArea.minX + Math.random() * (safeArea.maxX - safeArea.minX),
+                y: safeArea.minY + Math.random() * (safeArea.maxY - safeArea.minY)
+            };
         }
         
         objects.push({ ...ballStart, radius: 20 }); // Account for ball size

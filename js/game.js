@@ -25,6 +25,16 @@ class Game {
         this.hole = null;
         this.obstacles = [];
         
+        // Red border settings
+        this.borderWidth = 15; // Width of the red death border
+        
+        // Axis inversion mechanics
+        this.axisInverted = false;
+        this.inversionActive = false;
+        this.inversionStartTime = 0;
+        this.inversionDuration = 3000; // 3 seconds in milliseconds
+        this.inversionTriggered = false; // Only happens once per level
+        
         // Canvas dimensions
         this.canvasWidth = 0;
         this.canvasHeight = 0;
@@ -236,6 +246,12 @@ class Game {
         document.getElementById('game-level').textContent = levelNumber;
         document.getElementById('game-timer').textContent = this.timeLimit;
         
+        // Reset inversion state for new level
+        this.axisInverted = false;
+        this.inversionActive = false;
+        this.inversionTriggered = false;
+        this.inversionStartTime = 0;
+        
         // Set game state
         this.gameState = 'playing';
         this.gameStartTime = Date.now();
@@ -359,6 +375,71 @@ class Game {
         return false;
     }
     
+    checkBorderCollision() {
+        if (!this.ball) return false;
+        
+        const ballRadius = this.ball.radius;
+        const borderWidth = this.borderWidth;
+        
+        // Check if ball touches red border areas
+        if (this.ball.x - ballRadius <= borderWidth || // Left border
+            this.ball.x + ballRadius >= this.canvasWidth - borderWidth || // Right border  
+            this.ball.y - ballRadius <= borderWidth || // Top border
+            this.ball.y + ballRadius >= this.canvasHeight - borderWidth) { // Bottom border
+            return true;
+        }
+        
+        return false;
+    }
+    
+    updateAxisInversion() {
+        // Trigger axis inversion once per level (not in first second)
+        if (!this.inversionTriggered && this.gameTime > 1.0) {
+            // Random chance to trigger inversion (20% chance per second after first second)
+            const inversionChance = 0.003; // Per frame chance
+            if (Math.random() < inversionChance) {
+                this.triggerAxisInversion();
+            }
+        }
+        
+        // Handle active inversion duration
+        if (this.inversionActive) {
+            const elapsed = Date.now() - this.inversionStartTime;
+            if (elapsed >= this.inversionDuration) {
+                this.endAxisInversion();
+            }
+        }
+    }
+    
+    triggerAxisInversion() {
+        this.inversionTriggered = true;
+        this.inversionActive = true;
+        this.axisInverted = true;
+        this.inversionStartTime = Date.now();
+        
+        // Visual feedback - could add screen flash or UI indicator
+        console.log('Axis inversion activated!');
+        
+        // Play special sound for inversion
+        if (this.audioContext) {
+            Utils.playTone(this.audioContext, 400, 0.2);
+            setTimeout(() => Utils.playTone(this.audioContext, 600, 0.2), 100);
+        }
+    }
+    
+    endAxisInversion() {
+        this.inversionActive = false;
+        this.axisInverted = false;
+        
+        console.log('Axis inversion ended');
+        
+        // Play sound to indicate inversion ended
+        if (this.audioContext) {
+            Utils.playTone(this.audioContext, 600, 0.2);
+            setTimeout(() => Utils.playTone(this.audioContext, 400, 0.2), 100);
+        }
+    }
+    
     updateTimer(deltaTime) {
         if (this.gameState === 'playing') {
             // Game time always counts up from 0, never goes negative
@@ -384,15 +465,30 @@ class Game {
         // Update timer
         this.updateTimer(deltaTime);
         
+        // Apply axis inversion if active
+        let effectiveTiltX = this.tiltX;
+        let effectiveTiltY = this.tiltY;
+        
+        if (this.axisInverted) {
+            effectiveTiltX = -this.tiltX;
+            effectiveTiltY = -this.tiltY;
+        }
+        
         // Update physics
         const collisions = this.physics.update(
             this.ball,
             this.obstacles,
             this.canvasWidth,
             this.canvasHeight,
-            this.tiltX,
-            this.tiltY
+            effectiveTiltX,
+            effectiveTiltY
         );
+        
+        // Check border collision (red death border)
+        if (this.checkBorderCollision()) {
+            this.gameOver();
+            return;
+        }
         
         // Play collision sounds
         if (collisions.wallCollision || collisions.obstacleCollision) {
@@ -402,14 +498,35 @@ class Game {
             Utils.vibrate(30);
         }
         
+        // Handle axis inversion timing
+        this.updateAxisInversion();
+        
         // Check win condition
         this.checkWinCondition();
     }
     
     render() {
-        // Clear canvas
+        // Apply color inversion filter if active
+        if (this.axisInverted) {
+            this.ctx.filter = 'invert(1) hue-rotate(180deg)';
+        } else {
+            this.ctx.filter = 'none';
+        }
+        
+        // Clear canvas with background color
         this.ctx.fillStyle = '#34495e';
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        
+        // Draw red death border (drawn first as base layer)
+        this.ctx.fillStyle = '#e74c3c'; // Red color for danger
+        // Top border
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.borderWidth);
+        // Bottom border  
+        this.ctx.fillRect(0, this.canvasHeight - this.borderWidth, this.canvasWidth, this.borderWidth);
+        // Left border
+        this.ctx.fillRect(0, 0, this.borderWidth, this.canvasHeight);
+        // Right border
+        this.ctx.fillRect(this.canvasWidth - this.borderWidth, 0, this.borderWidth, this.canvasHeight);
         
         if (this.gameState === 'playing' || this.gameState === 'paused') {
             // Draw obstacles first (background layer)
@@ -519,6 +636,23 @@ class Game {
                     0, Math.PI * 2
                 );
                 this.ctx.fill();
+            }
+            
+            // Draw axis inversion indicator
+            if (this.axisInverted) {
+                // Flashing red border to indicate inversion
+                const flashAlpha = 0.3 + 0.3 * Math.sin(Date.now() / 200);
+                this.ctx.fillStyle = `rgba(231, 76, 60, ${flashAlpha})`;
+                this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                
+                // Text indicator
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '24px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.strokeStyle = 'black';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeText('AXIS INVERTED!', this.canvasWidth / 2, 50);
+                this.ctx.fillText('AXIS INVERTED!', this.canvasWidth / 2, 50);
             }
             
             // Draw pause overlay
