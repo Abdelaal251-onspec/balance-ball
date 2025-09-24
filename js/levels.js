@@ -58,10 +58,10 @@ class Levels {
     // Generate a safe random position that doesn't overlap with existing objects
     generateSafePosition(existingObjects, objectRadius, margin = 25, tier = null) {
         let attempts = 0;
-        const maxAttempts = 100; // More attempts for better placement
+        const maxAttempts = 150; // More attempts for better placement
         
         // Adjust margins based on difficulty - tighter spaces for harder levels
-        const difficultyMargin = tier ? Math.max(15, margin - (tier.obstacles[1] - tier.obstacles[0]) * 2) : margin;
+        const difficultyMargin = tier ? Math.max(20, margin - (tier.obstacles[1] - tier.obstacles[0]) * 2) : margin;
         
         while (attempts < maxAttempts) {
             const x = Math.random() * (this.baseWidth - 2 * difficultyMargin - 2 * objectRadius) + difficultyMargin + objectRadius;
@@ -73,9 +73,11 @@ class Levels {
                 let requiredDistance;
                 
                 if (obj.radius) {
+                    // For circular objects, use radius + margin
                     requiredDistance = objectRadius + obj.radius + difficultyMargin;
                 } else {
-                    const objRadius = Math.max(obj.width || 0, obj.height || 0) / 2;
+                    // For rectangular objects, use diagonal distance to ensure no intersection
+                    const objRadius = Math.sqrt((obj.width || 0) ** 2 + (obj.height || 0) ** 2) / 2;
                     requiredDistance = objectRadius + objRadius + difficultyMargin;
                 }
                 
@@ -93,23 +95,58 @@ class Levels {
         
         // Intelligent fallback based on difficulty
         const fallbackPositions = [
-            { x: this.baseWidth * 0.8, y: this.baseHeight * 0.8 }, // Bottom right
-            { x: this.baseWidth * 0.2, y: this.baseHeight * 0.8 }, // Bottom left  
-            { x: this.baseWidth * 0.8, y: this.baseHeight * 0.2 }, // Top right
-            { x: this.baseWidth * 0.2, y: this.baseHeight * 0.2 }, // Top left
-            { x: this.baseWidth * 0.5, y: this.baseHeight * 0.8 }, // Bottom center
-            { x: this.baseWidth * 0.8, y: this.baseHeight * 0.5 }, // Right center
+            { x: this.baseWidth * 0.85, y: this.baseHeight * 0.85 }, // Bottom right
+            { x: this.baseWidth * 0.15, y: this.baseHeight * 0.85 }, // Bottom left  
+            { x: this.baseWidth * 0.85, y: this.baseHeight * 0.15 }, // Top right
+            { x: this.baseWidth * 0.15, y: this.baseHeight * 0.15 }, // Top left
+            { x: this.baseWidth * 0.5, y: this.baseHeight * 0.85 },  // Bottom center
+            { x: this.baseWidth * 0.85, y: this.baseHeight * 0.5 },  // Right center
         ];
         
         return fallbackPositions[Math.floor(Math.random() * fallbackPositions.length)];
     }
 
+    // Check if there's a clear path between two points using simple line-of-sight
+    hasPathToHole(ballStart, hole, obstacles, ballRadius = 20) {
+        const steps = 50; // Number of points to check along the path
+        const dx = (hole.x - ballStart.x) / steps;
+        const dy = (hole.y - ballStart.y) / steps;
+        
+        for (let i = 0; i <= steps; i++) {
+            const x = ballStart.x + dx * i;
+            const y = ballStart.y + dy * i;
+            
+            // Check collision with each obstacle
+            for (const obstacle of obstacles) {
+                if (this.pointCollidesWithObstacle({ x, y, radius: ballRadius }, obstacle)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // Check if a point collides with an obstacle
+    pointCollidesWithObstacle(point, obstacle) {
+        if (obstacle.type === 'circle') {
+            const distance = Math.sqrt((point.x - obstacle.x) ** 2 + (point.y - obstacle.y) ** 2);
+            return distance < (point.radius + obstacle.radius);
+        } else if (obstacle.type === 'rectangle') {
+            // Check if circle intersects with rectangle
+            const closestX = Math.max(obstacle.x, Math.min(point.x, obstacle.x + obstacle.width));
+            const closestY = Math.max(obstacle.y, Math.min(point.y, obstacle.y + obstacle.height));
+            const distance = Math.sqrt((point.x - closestX) ** 2 + (point.y - closestY) ** 2);
+            return distance < point.radius;
+        }
+        return false;
+    }
+
     // Generate infinite random levels with progressive difficulty
-    generateLevel(levelNumber) {
+    generateLevel(levelNumber, forceObstacleCount = null) {
         const tier = this.getDifficultyTier(levelNumber);
         
-        // Calculate dynamic parameters
-        const numObstacles = Math.floor(
+        // Calculate dynamic parameters (use forced count for recursion or random within tier)
+        const numObstacles = forceObstacleCount !== null ? forceObstacleCount : Math.floor(
             tier.obstacles[0] + Math.random() * (tier.obstacles[1] - tier.obstacles[0] + 1)
         );
         
@@ -197,24 +234,73 @@ class Levels {
             }
         }
         
-        // Generate hole position with intelligent placement
-        const holePos = this.generateSafePosition(objects, holeRadius, this.minHoleDistance, tier);
+        // Generate hole position with guaranteed safe distance from all obstacles
+        let holeAttempts = 0;
+        let finalHolePos = null;
+        const maxHoleAttempts = 100;
         
-        // Add dynamic hole movement for advanced levels
-        let finalHolePos = holePos;
-        if (levelNumber > 10) {
-            const maxVariance = Math.min(15, (levelNumber - 10) * 1.5);
-            const variance = Math.random() * maxVariance;
-            const angle = Math.random() * Math.PI * 2;
+        while (holeAttempts < maxHoleAttempts && !finalHolePos) {
+            // Generate potential hole position with increased margin
+            const holeMargin = Math.max(this.minHoleDistance, holeRadius + 35);
+            const tempHolePos = this.generateSafePosition(objects, holeRadius, holeMargin, tier);
             
-            finalHolePos = {
-                x: holePos.x + Math.cos(angle) * variance,
-                y: holePos.y + Math.sin(angle) * variance
-            };
+            // Verify hole doesn't intersect with any obstacle (additional safety check)
+            let holeIsSafe = true;
+            for (const obstacle of obstacles) {
+                let distance;
+                if (obstacle.type === 'circle') {
+                    distance = Math.sqrt((tempHolePos.x - obstacle.x) ** 2 + (tempHolePos.y - obstacle.y) ** 2);
+                    if (distance < (holeRadius + obstacle.radius + 25)) { // Extra margin for hole
+                        holeIsSafe = false;
+                        break;
+                    }
+                } else if (obstacle.type === 'rectangle') {
+                    // Check distance from hole center to closest point on rectangle
+                    const closestX = Math.max(obstacle.x, Math.min(tempHolePos.x, obstacle.x + obstacle.width));
+                    const closestY = Math.max(obstacle.y, Math.min(tempHolePos.y, obstacle.y + obstacle.height));
+                    distance = Math.sqrt((tempHolePos.x - closestX) ** 2 + (tempHolePos.y - closestY) ** 2);
+                    if (distance < (holeRadius + 25)) { // Extra margin for hole
+                        holeIsSafe = false;
+                        break;
+                    }
+                }
+            }
             
-            // Keep hole in safe bounds
-            finalHolePos.x = Math.max(holeRadius + 30, Math.min(this.baseWidth - holeRadius - 30, finalHolePos.x));
-            finalHolePos.y = Math.max(holeRadius + 30, Math.min(this.baseHeight - holeRadius - 30, finalHolePos.y));
+            // Check if there's a clear path from ball start to hole
+            if (holeIsSafe && this.hasPathToHole(ballStart, tempHolePos, obstacles)) {
+                finalHolePos = tempHolePos;
+                break;
+            }
+            
+            holeAttempts++;
+        }
+        
+        // If no suitable hole position found, regenerate level with fewer obstacles
+        if (!finalHolePos) {
+            if (numObstacles > 0) {
+                // Retry with one less obstacle
+                return this.generateLevel(levelNumber, numObstacles - 1);
+            } else {
+                // Fallback: place hole in corner opposite to ball
+                const corners = [
+                    { x: this.baseWidth * 0.15, y: this.baseHeight * 0.15 },
+                    { x: this.baseWidth * 0.85, y: this.baseHeight * 0.15 },
+                    { x: this.baseWidth * 0.15, y: this.baseHeight * 0.85 },
+                    { x: this.baseWidth * 0.85, y: this.baseHeight * 0.85 }
+                ];
+                
+                // Find corner farthest from ball start
+                let farthestCorner = corners[0];
+                let maxDistance = 0;
+                for (const corner of corners) {
+                    const distance = Math.sqrt((ballStart.x - corner.x) ** 2 + (ballStart.y - corner.y) ** 2);
+                    if (distance > maxDistance) {
+                        maxDistance = distance;
+                        farthestCorner = corner;
+                    }
+                }
+                finalHolePos = farthestCorner;
+            }
         }
 
         return {
