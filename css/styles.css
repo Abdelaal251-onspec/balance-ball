@@ -109,10 +109,23 @@ html, body {
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
+    min-height: 44px; /* Minimum touch target size */
+    min-width: 120px;
+    display: inline-block;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
 }
 
-.btn:active {
-    transform: scale(0.98);
+.btn:active, .btn:focus {
+    transform: scale(0.95);
+    outline: none;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
 }
 
 .btn-primary {
@@ -121,8 +134,9 @@ html, body {
     box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
 }
 
-.btn-primary:hover {
+.btn-primary:hover, .btn-primary:active {
     box-shadow: 0 6px 20px rgba(52, 152, 219, 0.6);
+    background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
 }
 
 .btn-secondary {
@@ -131,8 +145,9 @@ html, body {
     box-shadow: 0 4px 15px rgba(149, 165, 166, 0.4);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover, .btn-secondary:active {
     box-shadow: 0 6px 20px rgba(149, 165, 166, 0.6);
+    background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
 }
 
 .btn-small {

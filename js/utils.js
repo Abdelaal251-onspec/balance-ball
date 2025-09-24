@@ -101,19 +101,34 @@ class Utils {
 
     // Prevent default touch behaviors
     static preventDefaultTouch() {
+        // Only prevent touch events on the game canvas and body, not on buttons
         document.addEventListener('touchstart', (e) => {
-            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+            const target = e.target;
+            // Allow touches on buttons, inputs, and interactive elements
+            if (target.tagName === 'BUTTON' || 
+                target.tagName === 'INPUT' || 
+                target.tagName === 'A' ||
+                target.classList.contains('btn') ||
+                target.closest('.btn') ||
+                target.closest('button')) {
+                return; // Don't prevent default for interactive elements
+            }
+            
+            // Prevent default for body and canvas to avoid scrolling
+            if (target === document.body || target.tagName === 'CANVAS') {
                 e.preventDefault();
             }
         }, { passive: false });
 
         document.addEventListener('touchmove', (e) => {
-            e.preventDefault();
+            const target = e.target;
+            // Only prevent scrolling on body and canvas
+            if (target === document.body || target.tagName === 'CANVAS' || target.closest('#game-screen')) {
+                e.preventDefault();
+            }
         }, { passive: false });
 
-        document.addEventListener('touchend', (e) => {
-            e.preventDefault();
-        }, { passive: false });
+        // Don't prevent touchend at all - let buttons work normally
     }
 
     // Canvas utilities

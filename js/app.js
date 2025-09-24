@@ -18,8 +18,20 @@ class App {
     }
     
     bindEvents() {
+        // Helper function to add both click and touch events
+        const addButtonEvent = (id, handler) => {
+            const button = document.getElementById(id);
+            if (button) {
+                button.addEventListener('click', handler);
+                button.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handler();
+                });
+            }
+        };
+
         // Menu buttons
-        document.getElementById('start-game-btn').addEventListener('click', () => {
+        addButtonEvent('start-game-btn', () => {
             this.requestOrientationPermission().then(() => {
                 this.startGame();
             }).catch(() => {
@@ -27,7 +39,7 @@ class App {
             });
         });
         
-        document.getElementById('calibrate-btn').addEventListener('click', () => {
+        addButtonEvent('calibrate-btn', () => {
             this.requestOrientationPermission().then(() => {
                 this.showCalibration();
             }).catch(() => {
@@ -35,67 +47,67 @@ class App {
             });
         });
         
-        document.getElementById('instructions-btn').addEventListener('click', () => {
+        addButtonEvent('instructions-btn', () => {
             Utils.showScreen('instructions-screen');
         });
         
         // Calibration buttons
-        document.getElementById('do-calibrate-btn').addEventListener('click', () => {
+        addButtonEvent('do-calibrate-btn', () => {
             this.calibrateDevice();
         });
         
-        document.getElementById('back-from-calibrate-btn').addEventListener('click', () => {
+        addButtonEvent('back-from-calibrate-btn', () => {
             Utils.showScreen('menu-screen');
         });
         
         // Instructions button
-        document.getElementById('back-from-instructions-btn').addEventListener('click', () => {
+        addButtonEvent('back-from-instructions-btn', () => {
             Utils.showScreen('menu-screen');
         });
         
         // Game buttons
-        document.getElementById('pause-btn').addEventListener('click', () => {
+        addButtonEvent('pause-btn', () => {
             if (this.game) {
                 this.game.pauseGame();
             }
         });
         
         // Pause screen buttons
-        document.getElementById('resume-btn').addEventListener('click', () => {
+        addButtonEvent('resume-btn', () => {
             if (this.game) {
                 this.game.resumeGame();
             }
         });
         
-        document.getElementById('restart-level-btn').addEventListener('click', () => {
+        addButtonEvent('restart-level-btn', () => {
             if (this.game) {
                 this.game.restartLevel();
             }
         });
         
-        document.getElementById('main-menu-btn').addEventListener('click', () => {
+        addButtonEvent('main-menu-btn', () => {
             this.showMenu();
         });
         
         // Win screen buttons
-        document.getElementById('next-level-btn').addEventListener('click', () => {
+        addButtonEvent('next-level-btn', () => {
             if (this.game) {
                 this.game.nextLevel();
             }
         });
         
-        document.getElementById('win-main-menu-btn').addEventListener('click', () => {
+        addButtonEvent('win-main-menu-btn', () => {
             this.showMenu();
         });
         
         // Game over screen buttons
-        document.getElementById('retry-btn').addEventListener('click', () => {
+        addButtonEvent('retry-btn', () => {
             if (this.game) {
                 this.game.restartLevel();
             }
         });
         
-        document.getElementById('gameover-main-menu-btn').addEventListener('click', () => {
+        addButtonEvent('gameover-main-menu-btn', () => {
             this.showMenu();
         });
         
